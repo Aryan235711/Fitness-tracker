@@ -6,7 +6,7 @@ import sqlite3
 import numpy as np
 import datetime
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
+import xgboost as xgb
 from util.food_utils import load_local_food_data
 
 DB_PATH = "data/user_data.db"
@@ -25,19 +25,21 @@ def predict_future(df, calorie_offset=0, target_days=30):
     df['date'] = pd.to_datetime(df['date'])
     df['days_since_start'] = (df['date'] - df['date'].min()).dt.days
     X = df[['days_since_start']]
-    
     preds = {}
+
     for col in ['weight', 'fat_percent']:
         if df[col].isnull().any():
             continue
         y = df[col]
-        model = LinearRegression()
+
+        model = xgb.XGBRegressor(n_estimators=100, objective='reg:squarederror')
         model.fit(X, y)
 
         future_days = np.arange(df['days_since_start'].max() + 1,
                                 df['days_since_start'].max() + target_days + 1).reshape(-1, 1)
         predictions = model.predict(future_days)
 
+        # Caloric offset for weight simulation
         if col == 'weight':
             weight_offset = calorie_offset / 7700
             predictions += weight_offset
