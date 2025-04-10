@@ -6,6 +6,9 @@ from pages.log_supplement import show_supplement_logger
 from pages.progress_tracker import show_progress_tracker
 from pages.ai_predictions import show_ai_predictions
 from pages.body_metrics import show_body_metrics
+from util.db_utils import init_simulation_table
+init_simulation_table()
+
 
 st.set_page_config(page_title="Fitness & Nutrition Tracker", layout="wide")
 
