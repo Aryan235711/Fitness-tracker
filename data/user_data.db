@@ -1,0 +1,5 @@
+CREATE TABLE body_metrics (
+    date TEXT,
+    weight REAL,
+    fat_percent REAL
+);
