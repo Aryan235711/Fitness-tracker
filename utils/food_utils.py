@@ -26,10 +26,11 @@ def get_valid_units_for_food(food_name):
     return food_units.get(food_name.lower(), default_units)
 
 def load_local_food_data():
-    if os.path.exists(FOOD_DB_PATH):
-        with open(FOOD_DB_PATH, "r") as f:
+    try:
+        with open("data/food_db.json", "r") as f:
             return json.load(f)
-    return {}
+    except FileNotFoundError:
+        return {}
 
 def save_to_food_data(name, nutrition):
     data = load_local_food_data()
