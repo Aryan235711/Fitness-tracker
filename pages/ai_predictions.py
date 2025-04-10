@@ -26,30 +26,61 @@ def predict_future(df, calorie_offset=0, target_days=30):
     if df.empty or df.shape[0] < 2:
         return None
 
+    # Step 1: Load wearable data
+    conn = sqlite3.connect(DB_PATH)
+    wearable_df = pd.read_sql_query("SELECT * FROM wearable_data", conn)
+    conn.close()
+
+    if wearable_df.empty:
+        wearable_df = pd.DataFrame(columns=["date", "heart_rate_avg", "spo2_avg", "sleep_hours", "steps"])
+
+    wearable_df['date'] = pd.to_datetime(wearable_df['date'])
     df['date'] = pd.to_datetime(df['date'])
-    df['days_since_start'] = (df['date'] - df['date'].min()).dt.days
-    X = df[['days_since_start']]
+
+    # Step 2: Merge
+    merged_df = pd.merge(df, wearable_df, on='date', how='left')
+
+    # Fill missing wearable data with mean or 0 (if no wearable data at all)
+    merged_df.fillna(method='ffill', inplace=True)
+    merged_df.fillna(method='bfill', inplace=True)
+    merged_df.fillna(0, inplace=True)
+
+    merged_df['days_since_start'] = (merged_df['date'] - merged_df['date'].min()).dt.days
+
     preds = {}
+    features = ['days_since_start', 'sleep_hours', 'steps', 'heart_rate_avg', 'spo2_avg']
 
     for col in ['weight', 'fat_percent']:
-        if df[col].isnull().any():
+        if merged_df[col].isnull().any():
             continue
-        y = df[col]
+
+        X = merged_df[features]
+        y = merged_df[col]
 
         model = xgb.XGBRegressor(n_estimators=100, objective='reg:squarederror')
         model.fit(X, y)
 
-        future_days = np.arange(df['days_since_start'].max() + 1,
-                                df['days_since_start'].max() + target_days + 1).reshape(-1, 1)
-        predictions = model.predict(future_days)
+        # Create future data
+        last_day = merged_df['days_since_start'].max()
+        future_days = np.arange(last_day + 1, last_day + target_days + 1)
 
-        # Caloric offset for weight simulation
+        future_df = pd.DataFrame({
+            'days_since_start': future_days,
+            'sleep_hours': merged_df['sleep_hours'].mean(),
+            'steps': merged_df['steps'].mean(),
+            'heart_rate_avg': merged_df['heart_rate_avg'].mean(),
+            'spo2_avg': merged_df['spo2_avg'].mean()
+        })
+
+        future_pred = model.predict(future_df)
+
+        # Apply calorie offset for weight
         if col == 'weight':
             weight_offset = calorie_offset / 7700
-            predictions += weight_offset
+            future_pred += weight_offset
 
-        future_dates = [df['date'].max() + datetime.timedelta(days=i) for i in range(1, target_days + 1)]
-        preds[col] = pd.DataFrame({'date': future_dates, col: predictions})
+        future_dates = [merged_df['date'].max() + datetime.timedelta(days=i) for i in range(1, target_days + 1)]
+        preds[col] = pd.DataFrame({'date': future_dates, col: future_pred})
 
     return preds
 
@@ -116,6 +147,27 @@ with st.form("simulate_form"):
         st.success(f"Logged simulation of {action.lower()} {qty}{unit} {food} with {actual_kcal:.2f} kcal change.")
         st.experimental_rerun()
 
+# wearables log data
+st.subheader("📲 Log Wearable Data (Manual)")
+
+with st.form("wearable_form"):
+    date = st.date_input("Date", datetime.date.today())
+    heart_rate = st.number_input("Average Heart Rate (bpm)", min_value=30.0, max_value=200.0)
+    spo2 = st.number_input("Average SpO₂ (%)", min_value=70.0, max_value=100.0)
+    sleep = st.number_input("Sleep Hours", min_value=0.0, max_value=24.0)
+    steps = st.number_input("Steps", min_value=0)
+    submit = st.form_submit_button("Save")
+
+    if submit:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("""
+            INSERT OR REPLACE INTO wearable_data (date, heart_rate_avg, spo2_avg, sleep_hours, steps)
+            VALUES (?, ?, ?, ?, ?)
+        """, (str(date), heart_rate, spo2, sleep, steps))
+        conn.commit()
+        conn.close()
+        st.success("Wearable data saved successfully!")
+        
 # ---------- Simulation History ----------
 st.divider()
 st.subheader("📜 Simulation History")
@@ -177,24 +229,5 @@ st.download_button(
     mime='text/csv'
 )
 
-# wearables log data
-st.subheader("📲 Log Wearable Data (Manual)")
 
-with st.form("wearable_form"):
-    date = st.date_input("Date", datetime.date.today())
-    heart_rate = st.number_input("Average Heart Rate (bpm)", min_value=30.0, max_value=200.0)
-    spo2 = st.number_input("Average SpO₂ (%)", min_value=70.0, max_value=100.0)
-    sleep = st.number_input("Sleep Hours", min_value=0.0, max_value=24.0)
-    steps = st.number_input("Steps", min_value=0)
-    submit = st.form_submit_button("Save")
-
-    if submit:
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("""
-            INSERT OR REPLACE INTO wearable_data (date, heart_rate_avg, spo2_avg, sleep_hours, steps)
-            VALUES (?, ?, ?, ?, ?)
-        """, (str(date), heart_rate, spo2, sleep, steps))
-        conn.commit()
-        conn.close()
-        st.success("Wearable data saved successfully!")
 
