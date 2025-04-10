@@ -4,6 +4,27 @@ import requests
 
 FOOD_DB_PATH = "data/food_data.json"
 
+# util/food_utils.py
+
+def get_valid_units_for_food(food_name):
+    # You can expand this dictionary over time
+    food_units = {
+        "banana": ["piece"],
+        "milk": ["ml", "cup"],
+        "oats": ["g", "tbsp", "cup"],
+        "peanut butter": ["tbsp", "g"],
+        "egg": ["piece"],
+        "chicken": ["g"],
+        "rice": ["g", "cup"],
+        "yogurt": ["g", "ml", "cup"],
+        "apple": ["piece", "g"],
+        "grapes": ["g", "piece"],
+    }
+
+    # Default to all common units if food is unknown
+    default_units = ["g", "ml", "tbsp", "tsp", "cup", "piece"]
+    return food_units.get(food_name.lower(), default_units)
+
 def load_local_food_data():
     if os.path.exists(FOOD_DB_PATH):
         with open(FOOD_DB_PATH, "r") as f:
