@@ -60,6 +60,35 @@ def fetch_simulation_history():
     conn.close()
     return df
 
+def predict_future(df, calorie_offset=0, target_days=30):
+    if df.empty or df.shape[0] < 2:
+        return None
+
+    df['date'] = pd.to_datetime(df['date'])
+    df['days_since_start'] = (df['date'] - df['date'].min()).dt.days
+    X = df[['days_since_start']]
+
+    preds = {}
+    for col in ['weight', 'fat_percent']:
+        if df[col].isnull().any():
+            continue
+        y = df[col]
+        model = LinearRegression()
+        model.fit(X, y)
+
+        future_days = np.arange(df['days_since_start'].max() + 1,
+                                df['days_since_start'].max() + target_days + 1).reshape(-1, 1)
+        predictions = model.predict(future_days)
+
+        # Apply calorie offset (assuming ~7700 kcal = 1kg change)
+        if col == 'weight':
+            weight_offset = calorie_offset / 7700
+            predictions += weight_offset
+
+        future_dates = [df['date'].max() + datetime.timedelta(days=i) for i in range(1, target_days + 1)]
+        preds[col] = pd.DataFrame({'date': future_dates, col: predictions})
+
+    return preds
 
 # -------- Streamlit UI --------
 st.title("📊 Predictions & Simulations")
