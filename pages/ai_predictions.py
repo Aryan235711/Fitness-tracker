@@ -117,3 +117,50 @@ else:
 def show_ai_predictions():
     st.title("🤖 AI Predictions")
     st.write("Get predictive insights based on your data.")
+
+# -------- Food Simulation: Add/Remove Foods --------
+st.subheader("🍽 Simulate Impact of Food Changes")
+
+# Load local food DB
+from util.food_utils import load_local_food_data
+food_data = load_local_food_data()
+
+if not food_data:
+    st.info("No food data available. Please log meals to build food DB.")
+    st.stop()
+
+food_names = list(food_data.keys())
+selected_food = st.selectbox("Choose a food item to add or remove", food_names)
+
+qty = st.number_input("Quantity (e.g., 100 for 100g/ml)", value=100)
+unit = st.text_input("Unit (for info only)", value="g")
+
+action = st.radio("Action", ["➕ Add this food daily", "➖ Remove this food from daily intake"])
+
+# Calories for selected food
+calories_per_100 = food_data[selected_food]["calories"]
+calories_total = calories_per_100 * (qty / 100)
+
+# 7700 kcal ~ 1 kg weight change
+daily_weight_change = (calories_total / 7700.0) * (1 if action == "➕ Add this food daily" else -1)
+
+# Generate simulation
+days = 30
+today = pd.Timestamp.today()
+sim_dates = [today + pd.Timedelta(days=i) for i in range(days)]
+sim_weights = [metrics_df['weight'].iloc[-1] + i * daily_weight_change for i in range(days)]
+
+sim_df = pd.DataFrame({
+    "date": sim_dates,
+    "simulated_weight": sim_weights
+})
+
+st.markdown(f"🔍 Simulating **{action.lower()}** `{selected_food.title()}` ({qty}{unit}) for next {days} days.")
+
+# Plot simulation
+fig, ax = plt.subplots()
+ax.plot(sim_df["date"], sim_df["simulated_weight"], label="Simulated Weight", color="orange")
+ax.set_xlabel("Date")
+ax.set_ylabel("Weight (kg)")
+ax.set_title("📈 Pred_
+
