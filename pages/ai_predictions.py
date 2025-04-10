@@ -177,3 +177,24 @@ st.download_button(
     mime='text/csv'
 )
 
+# wearables log data
+st.subheader("📲 Log Wearable Data (Manual)")
+
+with st.form("wearable_form"):
+    date = st.date_input("Date", datetime.date.today())
+    heart_rate = st.number_input("Average Heart Rate (bpm)", min_value=30.0, max_value=200.0)
+    spo2 = st.number_input("Average SpO₂ (%)", min_value=70.0, max_value=100.0)
+    sleep = st.number_input("Sleep Hours", min_value=0.0, max_value=24.0)
+    steps = st.number_input("Steps", min_value=0)
+    submit = st.form_submit_button("Save")
+
+    if submit:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("""
+            INSERT OR REPLACE INTO wearable_data (date, heart_rate_avg, spo2_avg, sleep_hours, steps)
+            VALUES (?, ?, ?, ?, ?)
+        """, (str(date), heart_rate, spo2, sleep, steps))
+        conn.commit()
+        conn.close()
+        st.success("Wearable data saved successfully!")
+
