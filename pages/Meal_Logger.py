@@ -70,16 +70,71 @@ def show_saved_templates():
         st.info("No templates saved yet.")
         return
 
-    for meal, items in templates.items():
-        with st.expander(f"🍽 {meal}"):
-            for item in items:
-                st.markdown(f"- {item['food'].title()} : {item['qty']} {item['unit']}")
-            col1, col2 = st.columns([1, 1])
-            if col1.button(f"❌ Delete '{meal}'", key=f"del_{meal}"):
-                del templates[meal]
-                save_templates(templates)
-                st.warning(f"Deleted '{meal}'")
-                st.experimental_rerun()
+    meal_names = list(templates.keys())
+    selected_meal_to_edit = st.selectbox("✏️ Select a meal to edit", [""] + meal_names)
+
+    if selected_meal_to_edit:
+        st.markdown("### 🛠 Edit Ingredients")
+        original_ingredients = templates[selected_meal_to_edit].copy()
+        edited_ingredients = original_ingredients.copy()
+
+        # Show current ingredients
+        for i, item in enumerate(original_ingredients):
+            st.markdown(f"- {item['food'].title()} : {item['qty']} {item['unit']}")
+
+        # Remove ingredient
+        food_options = [item['food'] for item in edited_ingredients]
+        ingredient_to_remove = st.selectbox("🔻 Select ingredient to remove", ["None"] + food_options)
+        if ingredient_to_remove != "None":
+            if st.button("Remove Selected Ingredient"):
+                edited_ingredients = [item for item in edited_ingredients if item['food'] != ingredient_to_remove]
+                st.success(f"✅ Removed '{ingredient_to_remove}'")
+
+        # Add or update ingredient
+        st.markdown("### ➕ Add/Update Ingredient")
+        new_food = st.text_input("Food name")
+        new_qty = st.text_input("Quantity (e.g., 100)")
+        new_unit = st.selectbox("Unit", ["g", "ml", "tbsp", "tsp", "cup", "piece"])
+
+        if new_food and new_qty:
+            try:
+                new_qty_float = float(new_qty)
+                # Check if it already exists
+                found = False
+                for item in edited_ingredients:
+                    if item['food'] == new_food:
+                        item['qty'] = new_qty_float
+                        item['unit'] = new_unit
+                        found = True
+                        break
+                if not found:
+                    edited_ingredients.append({
+                        "food": new_food,
+                        "qty": new_qty_float,
+                        "unit": new_unit
+                    })
+                st.success(f"✅ Added/Updated '{new_food}'")
+            except ValueError:
+                st.error("Please enter a valid number for quantity.")
+
+        # Save button
+        if st.button("💾 Save Changes"):
+            templates[selected_meal_to_edit] = edited_ingredients
+            save_templates(templates)
+            st.success(f"✅ Saved changes to '{selected_meal_to_edit}'")
+
+        # Undo button
+        if st.button("↩️ Undo Changes"):
+            templates = load_templates()
+            st.warning("Changes reverted. Reloaded last saved version.")
+
+        # Delete template
+        if st.button(f"❌ Delete '{selected_meal_to_edit}'"):
+            del templates[selected_meal_to_edit]
+            save_templates(templates)
+            st.warning(f"🗑 Deleted '{selected_meal_to_edit}'")
+            st.experimental_rerun()
+
 
 
 def main():
