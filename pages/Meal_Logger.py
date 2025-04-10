@@ -94,7 +94,12 @@ def show_saved_templates():
         st.markdown("### ➕ Add/Update Ingredient")
         new_food = st.text_input("Food name")
         new_qty = st.text_input("Quantity (e.g., 100)")
-        new_unit = st.selectbox("Unit", ["g", "ml", "tbsp", "tsp", "cup", "piece"])
+        if new_food:
+            valid_units = get_valid_units_for_food(new_food)
+        else:
+            valid_units = ["g", "ml", "tbsp", "tsp", "cup", "piece"]
+        
+        new_unit = st.selectbox("Unit", valid_units)
 
         if new_food and new_qty:
             try:
