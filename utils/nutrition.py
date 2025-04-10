@@ -9,12 +9,21 @@ def get_nutrition_info(items):
     total_fats = 0
 
     for item in items:
+        name = item["food"].lower()
         qty = item["quantity"]
-        # Dummy values
-        total_calories += qty * random.uniform(0.5, 2)
-        total_protein += qty * random.uniform(0.05, 0.2)
-        total_carbs += qty * random.uniform(0.1, 0.3)
-        total_fats += qty * random.uniform(0.02, 0.1)
+
+        if name not in food_data:
+            fetched = fetch_nutrition_from_internet(name)
+            if fetched is None:
+                raise ValueError(f"'{name}' is not a valid food item or not found online.")
+            save_to_food_data(name, fetched)
+            food_data[name] = fetched
+
+        food_info = food_data[name]
+        total_calories += (food_info["calories"] / 100) * qty
+        total_protein += (food_info["protein"] / 100) * qty
+        total_carbs += (food_info["carbs"] / 100) * qty
+        total_fats += (food_info["fats"] / 100) * qty
 
     return {
         "calories": round(total_calories, 2),
