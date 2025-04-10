@@ -1,5 +1,4 @@
 import streamlit as st
-
 from pages.dashboard import show_dashboard
 from pages.log_meal import show_meal_logger
 from pages.log_workout import show_workout_logger
