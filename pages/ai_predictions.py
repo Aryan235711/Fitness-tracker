@@ -229,5 +229,18 @@ st.download_button(
     mime='text/csv'
 )
 
+# Show Wearable History (Diagnostics)
+st.divider()
+st.subheader("📋 Logged Wearable Data")
+
+conn = sqlite3.connect(DB_PATH)
+wearable_data_df = pd.read_sql_query("SELECT * FROM wearable_data ORDER BY date DESC", conn)
+conn.close()
+
+if wearable_data_df.empty:
+    st.info("No wearable data logged yet.")
+else:
+    st.dataframe(wearable_data_df)
+
 
 
