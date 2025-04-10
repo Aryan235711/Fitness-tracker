@@ -10,6 +10,7 @@ import xgboost as xgb
 from util.food_utils import load_local_food_data
 import plotly.graph_objects as go
 import plotly.express as px
+from ml.xgboost_model import load_training_data, train_xgb_models, predict_future as predict_xgb
 
 
 DB_PATH = "data/user_data.db"
