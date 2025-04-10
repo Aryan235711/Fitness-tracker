@@ -8,6 +8,9 @@ import datetime
 import matplotlib.pyplot as plt
 import xgboost as xgb
 from util.food_utils import load_local_food_data
+import plotly.graph_objects as go
+import plotly.express as px
+
 
 DB_PATH = "data/user_data.db"
 
@@ -77,7 +80,9 @@ if metrics_df.empty:
     st.stop()
 
 st.subheader("📈 Historical Trends")
-st.line_chart(metrics_df.set_index("date")[['weight', 'fat_percent']])
+st.plotly_chart(px.line(metrics_df, x='date', y=['weight', 'fat_percent'], 
+                        labels={'value': 'Metric Value', 'variable': 'Metric'},
+                        title='📈 Historical Trends (Weight & Fat%)'))
 
 # ---------- Future Predictions ----------
 st.subheader("🔮 Future Predictions")
@@ -85,9 +90,9 @@ days = st.slider("Predict for how many days ahead?", 7, 90, 30)
 predictions = predict_future(metrics_df, target_days=days)
 
 if predictions:
-    for key, df in predictions.items():
-        st.markdown(f"**Predicted {key.replace('_', ' ').title()}**")
-        st.line_chart(df.set_index("date"))
+    for key, pred_df in predictions.items():
+        fig = px.line(pred_df, x='date', y=key, title=f'🔮 Predicted {key.replace("_", " ").title()}')
+        st.plotly_chart(fig)
 else:
     st.info("Not enough data to predict. Please log more metrics over time.")
 
@@ -155,10 +160,19 @@ sim_df = pd.DataFrame({
 
 st.markdown(f"🔍 Simulating **{action2.lower()}** `{selected_food}` ({qty2}{unit2}) for next {sim_days} days.")
 
-fig, ax = plt.subplots()
-ax.plot(sim_df["date"], sim_df["simulated_weight"], label="Simulated Weight", color="orange")
-ax.set_xlabel("Date")
-ax.set_ylabel("Weight (kg)")
-ax.set_title("📈 Weight Simulation from Food Change")
-ax.legend()
-st.pyplot(fig)
+fig = px.line(sim_df, x="date", y="simulated_weight", 
+              title="📈 Simulated Weight Over Time",
+              labels={"simulated_weight": "Weight (kg)"})
+st.plotly_chart(fig)
+
+# Download Simulation Data
+st.subheader("⬇️ Export Simulation Data")
+
+csv = sim_df.to_csv(index=False).encode('utf-8')
+st.download_button(
+    label="📥 Download as CSV",
+    data=csv,
+    file_name=f'{selected_food.lower().replace(" ", "_")}_simulation.csv',
+    mime='text/csv'
+)
+
